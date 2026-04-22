@@ -1,26 +1,57 @@
-// Smooth scrolling for anchor links
-document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function (e) {
-        e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
-        if (target) {
+(() => {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+        anchor.addEventListener('click', (e) => {
+            const href = anchor.getAttribute('href');
+            if (!href || href === '#') return;
+            const target = document.querySelector(href);
+            if (!target) return;
+            e.preventDefault();
             target.scrollIntoView({
-                behavior: 'smooth',
+                behavior: reduceMotion ? 'auto' : 'smooth',
                 block: 'start'
             });
-        }
+            if (!target.hasAttribute('tabindex') && !target.matches('a, button, input, select, textarea')) {
+                target.setAttribute('tabindex', '-1');
+                target.addEventListener('blur', () => target.removeAttribute('tabindex'), { once: true });
+            }
+            target.focus({ preventScroll: true });
+        });
     });
-});
 
-// Optional: Add active class to navigation based on scroll position
-window.addEventListener('scroll', () => {
-    // This can be expanded for section tracking if needed
-});
+    const nav = document.querySelector('.navbar');
+    if (nav && !reduceMotion) {
+        let lastStateY = window.scrollY;
+        let hidden = false;
+        let ticking = false;
 
-// Project card click handler (ready for future expansion)
-document.querySelectorAll('.project-card').forEach(card => {
-    card.addEventListener('click', function() {
-        // Can add modal or navigation here later
-        console.log('Project clicked');
-    });
-});
+        const update = () => {
+            const y = window.scrollY;
+            const delta = y - lastStateY;
+            if (y < 120) {
+                if (hidden) { nav.classList.remove('is-hidden'); hidden = false; }
+                lastStateY = y;
+            } else if (!hidden && delta > 6) {
+                nav.classList.add('is-hidden');
+                hidden = true;
+                lastStateY = y;
+            } else if (hidden && delta < -6) {
+                nav.classList.remove('is-hidden');
+                hidden = false;
+                lastStateY = y;
+            }
+            ticking = false;
+        };
+
+        window.addEventListener('scroll', () => {
+            if (!ticking) {
+                requestAnimationFrame(update);
+                ticking = true;
+            }
+        }, { passive: true });
+    }
+
+    const year = document.getElementById('year');
+    if (year) year.textContent = String(new Date().getFullYear());
+})();
